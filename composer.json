@@ -1,6 +1,6 @@
 {
-	"name": "voxsar/whatsapp-notification",
-	"description": "WhatsApp notification channel integration for WAAPI.",
+	"name": "voxsar/whatsapp-evo-notification",
+	"description": "WhatsApp notification channel integration for Evolution API.",
 	"type": "library",
 	"license": "MIT",
 	"autoload": {
