@@ -1,12 +1,18 @@
 {
 	"name": "voxsar/whatsapp-evo-notification",
 	"description": "WhatsApp notification channel integration for Evolution API.",
+	"version": "1.0.0",
 	"type": "library",
 	"license": "MIT",
 	"autoload": {
 		"psr-4": {
 			"Voxsar\\\\WhatsAppNotification\\\\": "src/"
 		}
+	},
+	"require": {
+		"php": "^7.4|^8.0",
+		"illuminate/notifications": "^8.0|^9.0|^10.0|^11.0",
+		"illuminate/support": "^8.0|^9.0|^10.0|^11.0"
 	},
 	"extra": {
 		"laravel": {
