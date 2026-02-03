@@ -6,7 +6,7 @@
 	"license": "MIT",
 	"autoload": {
 		"psr-4": {
-			"Voxsar\\\\WhatsAppNotification\\\\": "src/"
+			"Voxsar\\WhatsAppNotification\\": "src/"
 		}
 	},
 	"require": {
@@ -17,7 +17,7 @@
 	"extra": {
 		"laravel": {
 			"providers": [
-				"Voxsar\\\\WhatsAppNotification\\\\WhatsAppNotificationServiceProvider"
+				"Voxsar\\WhatsAppNotification\\WhatsAppNotificationServiceProvider"
 			]
 		}
 	}

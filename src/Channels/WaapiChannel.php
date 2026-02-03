@@ -9,102 +9,112 @@ use Illuminate\Support\Facades\Log;
 
 class WaapiChannel
 {
-    public function __construct(private ?string $baseUrl = null)
-    {
-        $this->baseUrl = $baseUrl ?? config('whatsapp-notification.base_url', 'https://your-evolution-api-server.com');
-    }
+	public function __construct(private ?string $baseUrl = null)
+	{
+		$this->baseUrl = $baseUrl ?? config('whatsapp-notification.base_url', 'https://your-evolution-api-server.com');
+	}
 
-    /**
-     * Send the given notification.
-     */
-    public function send(object $notifiable, Notification $notification): void
-    {
-        if (! config('whatsapp-notification.enabled', true)) {
-            Log::info('WAAPI channel is disabled');
+	/**
+	 * Send the given notification.
+	 */
+	public function send(object $notifiable, Notification $notification): void
+	{
+		if (! config('whatsapp-notification.enabled', true)) {
+			Log::info('WAAPI channel is disabled');
 
-            return;
-        }
+			return;
+		}
 
-        $message = $notification->toWaapi($notifiable);
+		$message = $notification->toWaapi($notifiable);
 
-        if (! $message) {
-            return;
-        }
+		if (! $message) {
+			return;
+		}
 
-        $message = $this->convertToEvolutionFormat($message);
+		$message = $this->convertToEvolutionFormat($message);
 
-        $this->sendMessage($message);
-    }
+		$this->sendMessage($message);
+	}
 
-    /**
-     * Convert old WAAPI format to Evolution API format
-     */
-    protected function convertToEvolutionFormat(array $message): array
-    {
-        $converted = $message;
+	/**
+	 * Convert old WAAPI format to Evolution API format
+	 */
+	protected function convertToEvolutionFormat(array $message): array
+	{
+		$converted = [];
 
-        // Convert chatId to number
-        if (isset($message['chatId']) && !isset($message['number'])) {
-            $converted['number'] = $message['chatId'];
-            unset($converted['chatId']);
-        }
+		// Convert chatId to number
+		if (isset($message['chatId'])) {
+			$converted['number'] = $message['chatId'];
+		} elseif (isset($message['number'])) {
+			$converted['number'] = $message['number'];
+		}
 
-        // Convert body to text
-        if (isset($message['body']) && !isset($message['text'])) {
-            $converted['text'] = $message['body'];
-            unset($converted['body']);
-        }
+		// Convert body or message to text
+		if (isset($message['body'])) {
+			$converted['text'] = $message['body'];
+		} elseif (isset($message['message'])) {
+			$converted['text'] = $message['message'];
+		} elseif (isset($message['text'])) {
+			$converted['text'] = $message['text'];
+		}
 
-        // Map other old WAAPI fields to Evolution API equivalents
-        if (isset($message['quotedMessageId'])) {
-            $converted['quoted'] = [
-                'key' => [
-                    'id' => $message['quotedMessageId']
-                ]
-            ];
-            unset($converted['quotedMessageId']);
-        }
+		// Map other old WAAPI fields to Evolution API equivalents
+		if (isset($message['quotedMessageId'])) {
+			$converted['quoted'] = [
+				'key' => [
+					'id' => $message['quotedMessageId']
+				]
+			];
+		}
 
-        return $converted;
-    }
+		// Copy any other fields that aren't already handled
+		foreach ($message as $key => $value) {
+			if (!isset($converted[$key]) && !in_array($key, ['chatId', 'body', 'message', 'quotedMessageId'])) {
+				$converted[$key] = $value;
+			}
+		}
 
-    /**
-     * Send WhatsApp message via Evolution API
-     */
-    protected function sendMessage(array $message): string
-    {
-        $baseUrl = rtrim($this->baseUrl, '/');
-        $instance = config('whatsapp-notification.instance');
-        $url = "{$baseUrl}/message/sendText/{$instance}";
-        
-        $client = new Client;
+		return $converted;
+	}
 
-        Log::info('Sending Evolution API message', $message);
-        sleep(1);
+	/**
+	 * Send WhatsApp message via Evolution API
+	 */
+	protected function sendMessage(array $message): string
+	{
+		$baseUrl = rtrim($this->baseUrl, '/');
+		$instance = config('whatsapp-notification.instance');
+		$url = "{$baseUrl}/message/sendText/{$instance}";
+		
+		$client = new Client;
 
-        try {
-            $response = $client->request('POST', $url, [
-                'timeout' => config('whatsapp-notification.timeout', 180),
-                'connect_timeout' => config('whatsapp-notification.connect_timeout', 180),
-                'read_timeout' => config('whatsapp-notification.read_timeout', 180),
-                'headers' => [
-                    'apikey' => config('whatsapp-notification.apikey'),
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => $message,
-            ]);
+		Log::info('Sending Evolution API message', $message);
+		sleep(1);
 
-            $result = $response->getBody()->getContents();
-            Log::info('Evolution API response', ['response' => $result]);
+		try {
+			$response = $client->request('POST', $url, [
+				'timeout' => config('whatsapp-notification.timeout', 180),
+				'connect_timeout' => config('whatsapp-notification.connect_timeout', 180),
+				'read_timeout' => config('whatsapp-notification.read_timeout', 180),
+				'headers' => [
+					'apikey' => config('whatsapp-notification.apikey'),
+					'Content-Type' => 'application/json',
+				],
+				'json' => $message,
+			]);
 
-            return $result;
-        } catch (Exception $e) {
-            Log::error('Evolution API send failed', [
-                'error' => $e->getMessage(),
-                'message' => $message,
-            ]);
+			$result = $response->getBody()->getContents();
+			Log::info('Evolution API response', ['response' => $result]);
 
-            throw $e;
-        }
-    }
+			return $result;
+		} catch (Exception $e) {
+			Log::error('Evolution API send failed', [
+				'error' => $e->getMessage(),
+				'message' => $message,
+			]);
+
+			throw $e;
+		}
+	}
 }
